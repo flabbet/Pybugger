@@ -1,4 +1,4 @@
-from Pybugger import PyBugger
+from PyBugger.pybugger import PyBugger
 
 
 def main():
@@ -8,9 +8,11 @@ def main():
 
 
 def example(x):
-    r = "testo"
+    r = "what a day"
+    z = [12, 5, 22, 55]
+    z = [5, 12, 25]
     x = 5
-    r = "pesto"
+    r = "what a night"
     print('Value = ' + str(x))
 
 
