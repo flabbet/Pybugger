@@ -4,13 +4,15 @@ from Pybugger import PyBugger
 def main():
     debugger = PyBugger()
     debugger.show_changes("example")
-    example(5, 5)
+    example([4, 4])
 
 
-def example(x, y):
-    x = 15
-    y = x ** 5
-    print('Value = ' + str(y))
+def example(x):
+    r = "testo"
+    x = [1, 2, 3, 4]
+    x = [4, 4]
+    r = "pesto"
+    print('Value = ' + str(x))
 
 
 if __name__ == '__main__':
