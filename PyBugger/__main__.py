@@ -1,10 +1,12 @@
+import inspect
+
 from PyBugger.pybugger import PyBugger
 
 
 def main():
     debugger = PyBugger()
-    debugger.record_changes("test_fun")
     test = Test()
+    debugger.record_changes(test.test_fun)
     test.test_fun()
     debugger.print_all_variables()
 

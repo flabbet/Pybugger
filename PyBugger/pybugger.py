@@ -1,6 +1,7 @@
 import ast
 import copy
 import inspect
+import re
 import sys
 from collections.abc import Iterable
 from itertools import zip_longest
@@ -37,14 +38,25 @@ def content_changed(source_iterable_obj, target_iterable_obj):
     return False
 
 
+def get_value_from_string(string: str):
+    splitted_str = string.replace(" ", "").split('=')
+    return splitted_str[0], splitted_str[1]
+
+
 class PyBugger:
+    function = None
     function_name = None
     local_variables = None
     local_variables_instantiated_lines = dict()
     debugging_function = None
+    outer_variables = dict()
+    function_context = None
+    debugging_code = None
+    first_line = 0
 
-    def record_changes(self, func_name):
-        self.function_name = func_name
+    def record_changes(self, func):
+        self.function_name = func.__name__
+        self.function = func
         sys.settrace(self.trace_calls)
 
     def set_existing_variables_lines(self):
@@ -56,6 +68,11 @@ class PyBugger:
         if frame.f_code.co_name == self.function_name:
             if self.local_variables is None:
                 self.local_variables = frame.f_locals.copy()
+                self.debugging_code = inspect.getsource(self.function)
+                self.get_self_items_from_code()
+                self.first_line = frame.f_code.co_firstlineno
+                if 'self' in self.local_variables.keys():
+                    self.function_context = self.local_variables.pop('self')
                 self.set_existing_variables_lines()
             return self.trace_lines
         return
@@ -85,7 +102,17 @@ class PyBugger:
                     print_variable_changed(frame.f_lineno, variable, item_before_edit, frame.f_locals[variable])
                 self.local_variables[variable] = frame.f_locals[variable]
 
+    def get_self_items_from_code(self):
+        variables = re.findall(r'self\..*', self.debugging_code)
+        for variable in variables:
+            name, value = get_value_from_string(variable.replace("self.", ""))
+            self.outer_variables[name] = value
+
     def print_all_variables(self):
+        self.__print_inner_variables()
+        self.__print_outer_variables()
+
+    def __print_inner_variables(self):
         try:
             for variable in self.local_variables:
                 obj = self.local_variables[variable]
@@ -97,6 +124,13 @@ class PyBugger:
                       self.local_variables_instantiated_lines[variable], "line")
         except SyntaxError:
             print("Couldn't print variable", variable)
+
+    def __print_outer_variables(self):
+        for variable in self.outer_variables:
+            obj = self.outer_variables[variable]
+            obj_type = type(ast.literal_eval(str(obj)))
+            variable_inst_place, variable_inst_line = self.__find_variable_in_context(variable)
+            print(variable, obj_type, "is instantiated in", variable_inst_place, variable_inst_line, "line")
 
     def update_local_variables(self, new_locals):
         for variable, value in new_locals.items():
@@ -111,3 +145,11 @@ class PyBugger:
         except TypeError:
             self.local_variables[variable].remove(old_item)
             self.local_variables[variable].add(new_item)
+
+    def __find_variable_in_context(self, variable):
+        source_file_lines = inspect.getsourcelines(type(self.function_context))
+        item_line = source_file_lines[1] - 1
+        for line in source_file_lines[0]:
+            if variable in line:
+                item_line += 1
+        return self.function_context, item_line
