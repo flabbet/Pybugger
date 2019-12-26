@@ -24,9 +24,9 @@ class Test:
     test_var = 15
 
     def test_fun(self):
+        self.test_var = 5
         abcd = "dcba"
         abcd = "wubba dubba lub dub"
-        self.test_var = 5
 
 
 if __name__ == '__main__':

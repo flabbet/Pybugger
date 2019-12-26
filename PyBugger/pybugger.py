@@ -52,7 +52,6 @@ class PyBugger:
     outer_variables = dict()
     function_context = None
     debugging_code = None
-    first_line = 0
 
     def record_changes(self, func):
         self.function_name = func.__name__
@@ -69,11 +68,11 @@ class PyBugger:
             if self.local_variables is None:
                 self.local_variables = frame.f_locals.copy()
                 self.debugging_code = inspect.getsource(self.function)
-                self.get_self_items_from_code()
-                self.first_line = frame.f_code.co_firstlineno
                 if 'self' in self.local_variables.keys():
                     self.function_context = self.local_variables.pop('self')
+                self.get_self_items_from_code()
                 self.set_existing_variables_lines()
+                self.find_changes_in_outer_variables()
             return self.trace_lines
         return
 
@@ -106,7 +105,8 @@ class PyBugger:
         variables = re.findall(r'self\..*', self.debugging_code)
         for variable in variables:
             name, value = get_value_from_string(variable.replace("self.", ""))
-            self.outer_variables[name] = value
+            if name not in self.outer_variables.keys():
+                self.outer_variables[name] = self.__find_variable_init_value_in_context(name)
 
     def print_all_variables(self):
         self.__print_inner_variables()
@@ -139,6 +139,19 @@ class PyBugger:
                     continue
                 self.local_variables[variable] = value
 
+    def find_changes_in_outer_variables(self):
+        source_func_lines = inspect.getsourcelines(type(self.function_context))
+        current_line = source_func_lines[1] + 1
+        for line in source_func_lines[0]:
+            for outer_variable in self.outer_variables:
+                if outer_variable in line:
+                    last_val = self.outer_variables[outer_variable]
+                    new_val = line.split('=')[1].strip()
+                    if last_val != new_val:
+                        self.outer_variables[outer_variable] = new_val
+                        print_variable_changed(current_line, outer_variable, last_val, self.outer_variables[outer_variable])
+            current_line += 1
+
     def update_iterable_item(self, variable, index, old_item, new_item):
         try:
             self.local_variables[variable][index] = new_item
@@ -153,3 +166,10 @@ class PyBugger:
             if variable in line:
                 item_line += 1
         return self.function_context, item_line
+
+    def __find_variable_init_value_in_context(self, variable):
+        source_file_lines = inspect.getsourcelines(type(self.function_context))
+        for line in source_file_lines[0]:
+            if variable in line:
+                return line.split('=')[1].strip()
+        return None
