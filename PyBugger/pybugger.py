@@ -123,8 +123,8 @@ class PyBugger:
     def print_all_variables(self):
         self.__print_inner_variables()
         self.__print_outer_variables()
+        print("------------------------------------------------")
         self.__print_variable_changes()
-        print(self.variable_changes)
 
     def __print_inner_variables(self):
         try:
@@ -196,7 +196,14 @@ class PyBugger:
             for value in self.variable_changes[variable]:
                 print("    to '{}'".format(value), "on", self.variable_changes[variable][value], "line")
             try:
-                float(self.variable_changes[variable])
-                print("So the range is {}-{}".format(min(self.variable_changes[variable]), max(self.variable_changes[variable])))
+                values = self.get_changes_variable_values_list(variable)
+                float(values[0])
+                print("So the range is {}, {}".format(max(self.variable_changes[variable]), min(self.variable_changes[variable])))
             except:
-                print("Range can't be calculated for this variable")
+                pass
+
+    def get_changes_variable_values_list(self, variable):
+        final_list = list()
+        for change in self.variable_changes[variable]:
+            final_list.append(change[0])
+        return final_list

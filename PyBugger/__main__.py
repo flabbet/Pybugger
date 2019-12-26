@@ -1,6 +1,4 @@
-import inspect
-
-from PyBugger.pybugger import PyBugger
+from pybugger import PyBugger
 
 
 def main():
