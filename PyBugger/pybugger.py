@@ -3,16 +3,17 @@ import copy
 import inspect
 import re
 import sys
+import time
 from collections.abc import Iterable
 from itertools import zip_longest
 
 
 def print_variable_changed(line, variable, old_value, new_value):
-    print("Line {}: Variable {} changed from {} to {}".format(line, variable, old_value, new_value))
+    print("\nLine {}: Variable {} changed from {} to {} \n".format(line, variable, old_value, new_value))
 
 
 def print_iterable_changed(line, variable, old_value, new_value, index):
-    print("Line {}: Variable {} item changed at index {}, from {} to {}".format(line, variable, index,
+    print("\nLine {}: Variable {} item changed at index {}, from {} to {}\n".format(line, variable, index,
                                                                                 old_value, new_value))
 
 
@@ -54,6 +55,10 @@ class PyBugger:
     debugging_code = None
     variable_changes = dict()
     function_starting_line = None
+    lines_executed = dict()
+    average_time_spent_on_line = dict()
+    total_time_spent_on_line = dict()
+    __start_time = None
 
     def record_changes(self, func):
         self.function_name = func.__name__
@@ -62,7 +67,6 @@ class PyBugger:
 
     def set_existing_variables_lines(self):
         for item in self.local_variables:
-            print(item)
             self.local_variables_instantiated_lines[item] = "function argument"
 
     def trace_calls(self, frame, event, arg):
@@ -80,6 +84,15 @@ class PyBugger:
         return
 
     def trace_lines(self, frame, event, arg):
+        self.add_line_executed(frame.f_lineno)
+        if self.__start_time is not None:
+            self.add_average_spent_on_line(frame.f_lineno, (time.time() * 1000) - self.__start_time)
+            print("line {} has executed {} time(s). Average execution time of this line is {} milliseconds and total: {}".format(
+                frame.f_lineno,
+                self.lines_executed[frame.f_lineno], self.average_time_spent_on_line[frame.f_lineno],
+                self.total_time_spent_on_line[frame.f_lineno]))
+
+        self.__start_time = time.time() * 1000
         if len(frame.f_locals) != self.local_variables:
             self.update_local_variables(frame.f_locals)
             self.debugging_function = frame.f_code.co_name
@@ -106,10 +119,15 @@ class PyBugger:
                     print_variable_changed(frame.f_lineno, variable, item_before_edit, frame.f_locals[variable])
                 self.local_variables[variable] = frame.f_locals[variable]
 
+    def add_line_executed(self, line):
+        if line not in self.lines_executed.keys():
+            self.lines_executed[line] = 0
+        self.lines_executed[line] += 1
+
     def add_variable_change(self, variable, new, line):
         if variable not in self.variable_changes.keys():
             self.variable_changes[variable] = dict()
-        self.variable_changes[variable][new] = line
+        self.variable_changes[variable][str(new)] = line
 
     def get_outer_items_from_code(self):
         variables = re.findall(r'self\..*', self.debugging_code)
@@ -120,13 +138,15 @@ class PyBugger:
                 place, line = self.__find_variable_in_context(name)
                 self.add_variable_change(name, self.outer_variables[name], str("{} {}".format(place, line)))
 
-    def print_all_variables(self):
-        self.__print_inner_variables()
-        self.__print_outer_variables()
-        print("------------------------------------------------")
-        self.__print_variable_changes()
+    def print_full_debug_info(self):
+        self.print_inner_variables()
+        self.print_outer_variables()
+        print("-----------------------------------------------------------------")
+        self.print_variable_changes()
+        print("-----------------------------------------------------------------")
+        self.print_line_report()
 
-    def __print_inner_variables(self):
+    def print_inner_variables(self):
         try:
             for variable in self.local_variables:
                 obj = self.local_variables[variable]
@@ -139,7 +159,7 @@ class PyBugger:
         except SyntaxError:
             print("Couldn't print variable", variable)
 
-    def __print_outer_variables(self):
+    def print_outer_variables(self):
         for variable in self.outer_variables:
             obj = self.outer_variables[variable]
             obj_type = type(ast.literal_eval(str(obj)))
@@ -154,6 +174,7 @@ class PyBugger:
                 self.local_variables[variable] = value
 
     def find_changes_in_outer_variables(self):
+        if len(self.outer_variables) == 0: return
         source_func_lines = inspect.getsourcelines(type(self.function_context))
         current_line = self.function_starting_line + 1
         for line in source_func_lines[0]:
@@ -190,7 +211,7 @@ class PyBugger:
                 return line.split('=')[1].strip()
         return None
 
-    def __print_variable_changes(self):
+    def print_variable_changes(self):
         for variable in self.variable_changes:
             print("Variable", variable, "changed:")
             for value in self.variable_changes[variable]:
@@ -198,7 +219,8 @@ class PyBugger:
             try:
                 values = self.get_changes_variable_values_list(variable)
                 float(values[0])
-                print("So the range is {}, {}".format(max(self.variable_changes[variable]), min(self.variable_changes[variable])))
+                print("So the range is {}, {}".format(max(self.variable_changes[variable]),
+                                                      min(self.variable_changes[variable])))
             except:
                 pass
 
@@ -207,3 +229,23 @@ class PyBugger:
         for change in self.variable_changes[variable]:
             final_list.append(change[0])
         return final_list
+
+    def add_average_spent_on_line(self, line, exec_time):
+        if line not in self.average_time_spent_on_line.keys():
+            self.average_time_spent_on_line[line] = exec_time
+            self.total_time_spent_on_line[line] = exec_time
+            return
+        self.average_time_spent_on_line[line] = (self.average_time_spent_on_line[line] + exec_time) / 2
+        self.total_time_spent_on_line[line] += exec_time
+
+    def print_line_report(self):
+        print("Total execution time was {} milliseconds".format(sum(self.total_time_spent_on_line.values())))
+        exec_times = list(self.lines_executed.values())
+        exec_times[len(exec_times) - 1] -= 1
+        self.print_line_execution_count(exec_times)
+
+    def print_line_execution_count(self, exec_times):
+        i = 0
+        for line in self.lines_executed:
+            print("Line {} executed {} time(s)".format(line, exec_times[i]))
+            i += 1

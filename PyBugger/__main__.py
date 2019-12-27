@@ -1,3 +1,5 @@
+import time
+
 from pybugger import PyBugger
 
 
@@ -6,7 +8,7 @@ def main():
     test = Test()
     debugger.record_changes(test.test_fun)
     test.test_fun()
-    debugger.print_all_variables()
+    debugger.print_full_debug_info()
 
 
 def example(x):
@@ -23,6 +25,8 @@ class Test:
 
     def test_fun(self):
         self.test_var = 5
+        for i in range(2):
+            time.sleep(2)
         abcd = "dcba"
         abcd = "wubba dubba lub dub"
 
