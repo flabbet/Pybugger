@@ -6,6 +6,7 @@ import sys
 import time
 from collections.abc import Iterable
 from itertools import zip_longest
+import file_loader
 
 
 def print_variable_changed(line, variable, old_value, new_value):
@@ -14,7 +15,7 @@ def print_variable_changed(line, variable, old_value, new_value):
 
 def print_iterable_changed(line, variable, old_value, new_value, index):
     print("\nLine {}: Variable {} item changed at index {}, from {} to {}\n".format(line, variable, index,
-                                                                                old_value, new_value))
+                                                                                    old_value, new_value))
 
 
 def find_item_changed(iterable_obj, iterable_obj2):
@@ -65,6 +66,24 @@ class PyBugger:
         self.function = func
         sys.settrace(self.trace_calls)
 
+    def record_changes_from_file(self, file_path, debug_function_name="main", arg1=None, arg2=None, arg3=None,
+                                 arg4=None, arg5=None):
+        module = file_loader.load_py_file(file_path)
+        func = getattr(module, debug_function_name)
+        self.record_changes(func)
+        if arg1 is None:
+            func()
+        elif arg2 is None:
+            func(arg1)
+        elif arg3 is None:
+            func(arg1, arg2)
+        elif arg4 is None:
+            func(arg1, arg2, arg3)
+        elif arg5 is None:
+            func(arg1, arg2, arg3, arg4)
+        else:
+            func(arg1, arg2, arg3, arg4, arg5)
+
     def set_existing_variables_lines(self):
         for item in self.local_variables:
             self.local_variables_instantiated_lines[item] = "function argument"
@@ -87,10 +106,11 @@ class PyBugger:
         self.add_line_executed(frame.f_lineno)
         if self.__start_time is not None:
             self.add_average_spent_on_line(frame.f_lineno, (time.time() * 1000) - self.__start_time)
-            print("line {} has executed {} time(s). Average execution time of this line is {} milliseconds and total: {}".format(
-                frame.f_lineno,
-                self.lines_executed[frame.f_lineno], self.average_time_spent_on_line[frame.f_lineno],
-                self.total_time_spent_on_line[frame.f_lineno]))
+            print(
+                "line {} has executed {} time(s). Average execution time of this line is {} milliseconds and total: {}".format(
+                    frame.f_lineno,
+                    self.lines_executed[frame.f_lineno], self.average_time_spent_on_line[frame.f_lineno],
+                    self.total_time_spent_on_line[frame.f_lineno]))
 
         self.__start_time = time.time() * 1000
         if len(frame.f_locals) != self.local_variables:
