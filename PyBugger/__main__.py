@@ -5,7 +5,7 @@ from pybugger import PyBugger
 
 def main():
     debugger = PyBugger()
-    debugger.record_changes_from_file("example_file", "test_func_1", "arg1")
+    debugger.record_changes_from_file("example_file", "test_func_1", "fine")
     debugger.print_full_debug_info()
 
 

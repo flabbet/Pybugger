@@ -70,6 +70,8 @@ class PyBugger:
                                  arg4=None, arg5=None):
         module = file_loader.load_py_file(file_path)
         func = getattr(module, debug_function_name)
+        if func is None:
+            raise FunctionNotFound("Function {} was not found in {}".format(debug_function_name, file_path))
         self.record_changes(func)
         if arg1 is None:
             func()
