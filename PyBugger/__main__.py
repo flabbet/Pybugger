@@ -7,20 +7,19 @@ from PyBugger.report_io import ReportIO
 def main():
     debugger = PyBugger()
     debugger.record_changes_from_file("example_file.py", "test_func_1", "fine", "120")
-    debugger.print_report()
-
     debugger.generate_report("report.json")
+
     report_io = ReportIO("report.json")
     report = report_io.open_report()
-    #debugger.print_report(report)
+    debugger.print_report(report)
 
 
 def example(x):
-    r = "what a day"
+    r = 66
     z = [12, 5, 22, 55]
     z = [5, 12, 25]
     x = 5
-    r = "what a night"
+    r = 667
     print('Value = ' + str(x))
 
 

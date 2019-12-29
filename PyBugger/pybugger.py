@@ -41,8 +41,8 @@ def get_value_from_string(string: str):
 class PyBugger:
     function = None
     function_name = None
-    local_variables = dict()
-    local_variables_instantiated_lines = dict()
+    local_variables = None
+    variables_instantiated_lines = dict()
     debugging_function = None
     outer_variables = dict()
     function_context = None
@@ -78,11 +78,6 @@ class PyBugger:
         else:
             func(arg1, arg2, arg3, arg4, arg5)
 
-    def set_existing_variables(self):
-        for item in self.local_variables:
-            self.add_variable_change(item, self.local_variables[item], "function argument")
-            self.local_variables_instantiated_lines[item] = "function argument"
-
     def trace_calls(self, frame, event, arg):
         if frame.f_code.co_name == self.function_name:
             if self.local_variables is None:
@@ -96,6 +91,11 @@ class PyBugger:
                 self.find_changes_in_outer_variables()
             return self.trace_lines
         return
+
+    def set_existing_variables(self):
+        for item in self.local_variables:
+            self.add_variable_change(item, self.local_variables[item], "function argument")
+            self.variables_instantiated_lines[item] = "function argument"
 
     def trace_lines(self, frame, event, arg):
         self.add_line_executed(frame.f_lineno)
@@ -113,8 +113,8 @@ class PyBugger:
             self.debugging_function = frame.f_code.co_name
 
         for variable, value in self.local_variables.items():
-            if variable not in self.local_variables_instantiated_lines.keys():
-                self.local_variables_instantiated_lines[variable] = frame.f_lineno - 1
+            if variable not in self.variables_instantiated_lines.keys():
+                self.variables_instantiated_lines[variable] = frame.f_lineno - 1
             if frame.f_locals[variable] != value:
                 item_before_edit = copy.copy(self.local_variables[variable])
                 while isinstance(frame.f_locals[variable], Iterable) and \
@@ -161,6 +161,7 @@ class PyBugger:
             if name not in self.outer_variables.keys():
                 self.outer_variables[name] = self.__find_variable_init_value_in_context(name)
                 place, line = self.__find_variable_in_context(name)
+                self.variables_instantiated_lines[name] = line
                 self.add_variable_change(name, self.outer_variables[name], str("{} {}".format(place, line)))
 
     def print_report(self, report: Report = None):
@@ -178,7 +179,8 @@ class PyBugger:
         for live_change in report.live_reports:
             print(live_change)
         for variable in report.variables:
-            print("{} {} is instantiated in {} at {} line".format(variable["var_name"], variable["var_type"], variable["scope"], variable["line"]))
+            print("{} {} is instantiated in {} at {} line".format(variable["var_name"], variable["var_type"],
+                                                                  variable["scope"], variable["line"]))
         print("-----------------------------------------------------------------")
         for variable_change in report.variable_changes:
             print("Variable {} changed:".format(variable_change["variable"]))
@@ -200,7 +202,7 @@ class PyBugger:
                 else:
                     obj_type = type(ast.literal_eval(str(obj)))
                 print(variable, obj_type, "is instantiated in", self.function_name, "at",
-                      self.local_variables_instantiated_lines[variable], "line")
+                      self.variables_instantiated_lines[variable], "line")
         except SyntaxError:
             print("Couldn't print variable", variable)
 
@@ -229,8 +231,8 @@ class PyBugger:
                     new_val = line.split('=')[1].strip()
                     if last_val != new_val:
                         self.outer_variables[outer_variable] = new_val
-                        print_variable_changed(current_line, outer_variable, last_val,
-                                               self.outer_variables[outer_variable])
+                        self.print_variable_changed(current_line, outer_variable, last_val,
+                                                    self.outer_variables[outer_variable])
                         self.add_variable_change(outer_variable, self.outer_variables[outer_variable], current_line)
         current_line += 1
 
@@ -264,10 +266,15 @@ class PyBugger:
             try:
                 values = self.get_changes_variable_values_list(variable)
                 float(values[0])
-                print("So the range is {}, {}".format(max(self.variable_changes[variable]),
-                                                      min(self.variable_changes[variable])))
+                min_val, max_val = self.get_range(variable)
+                print("So the range is {}, {}".format(min_val,
+                                                      max_val))
             except:
                 pass
+
+    def get_range(self, variable):
+        vals = [float(i) for i in self.variable_changes[variable].keys()]
+        return min(vals), max(vals)
 
     def get_changes_variable_values_list(self, variable):
         final_list = list()
@@ -315,9 +322,9 @@ class PyBugger:
             changes = list()
             for value in self.variable_changes[variable_change]:
                 try:
-                    float(self.variable_changes[variable_change])
-                    range = "{}, {}".format(max(self.variable_changes[variable_change]),
-                                            min(self.variable_changes[variable_change]))
+                    float(value)
+                    min_val, max_val = self.get_range(variable_change)
+                    range = "{}, {}".format(min_val,max_val)
                 except:
                     range = ""
                 changes.append(Change(value, self.variable_changes[variable_change][value]))
@@ -345,6 +352,5 @@ class PyBugger:
                 obj_type = type(ast.literal_eval(str(obj)))
             variables_data.append(
                 Variable(variable, str(obj_type), str(self.function_name),
-                         self.local_variables_instantiated_lines[variable]))
+                         self.variables_instantiated_lines[variable]))
         return variables_data
-
