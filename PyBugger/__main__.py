@@ -1,12 +1,18 @@
 import time
 
-from pybugger import PyBugger
+from PyBugger.pybugger import PyBugger
+from PyBugger.report_io import ReportIO
 
 
 def main():
     debugger = PyBugger()
-    debugger.record_changes_from_file("example_file", "test_func_1", "fine")
-    debugger.print_full_debug_info()
+    debugger.record_changes_from_file("example_file.py", "test_func_1", "fine", "120")
+    debugger.print_report()
+
+    debugger.generate_report("report.json")
+    report_io = ReportIO("report.json")
+    report = report_io.open_report()
+    #debugger.print_report(report)
 
 
 def example(x):
@@ -26,7 +32,7 @@ class Test:
         for i in range(2):
             time.sleep(2)
         abcd = "dcba"
-        abcd = "wubba dubba lub dub"
+        abcd = "wubba lubba dub dub"
 
 
 if __name__ == '__main__':

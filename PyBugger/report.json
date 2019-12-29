@@ -1,0 +1,81 @@
+{
+    "lines": [
+        {
+            "average_time": 0.165283203125,
+            "executed_count": 1,
+            "number": 6,
+            "total_time": 0.165283203125
+        },
+        {
+            "average_time": 0.0078125,
+            "executed_count": 1,
+            "number": 7,
+            "total_time": 0.0078125
+        },
+        {
+            "average_time": 0.078857421875,
+            "executed_count": 1,
+            "number": 8,
+            "total_time": 0.078857421875
+        },
+        {
+            "average_time": 0.0224609375,
+            "executed_count": 2,
+            "number": 9,
+            "total_time": 0.044921875
+        }
+    ],
+    "live_reports": [
+        "line 6 has executed 1 time(s). Average execution time of this line is 0.165283203125 milliseconds and total: 0.165283203125",
+        "line 7 has executed 1 time(s). Average execution time of this line is 0.0078125 milliseconds and total: 0.0078125",
+        "\nLine 7: Variable number changed from 120 to 55 \n",
+        "line 8 has executed 1 time(s). Average execution time of this line is 0.078857421875 milliseconds and total: 0.078857421875",
+        "\nLine 8: Variable mood changed from fine to nice \n",
+        "line 9 has executed 1 time(s). Average execution time of this line is 0.025634765625 milliseconds and total: 0.025634765625",
+        "\nLine 9: Variable number changed from 55 to -55 \n",
+        "line 9 has executed 2 time(s). Average execution time of this line is 0.0224609375 milliseconds and total: 0.044921875"
+    ],
+    "total_execution_time": [
+        0.296875
+    ],
+    "variable_changes": [
+        {
+            "range": "",
+            "values": [
+                {
+                    "line": 7,
+                    "new_value": "55"
+                },
+                {
+                    "line": 9,
+                    "new_value": "-55"
+                }
+            ],
+            "variable": "number"
+        },
+        {
+            "range": "",
+            "values": [
+                {
+                    "line": 8,
+                    "new_value": "nice"
+                }
+            ],
+            "variable": "mood"
+        }
+    ],
+    "variables": [
+        {
+            "line": 5,
+            "scope": "test_func_1",
+            "var_name": "mood",
+            "var_type": "<class 'str'>"
+        },
+        {
+            "line": 5,
+            "scope": "test_func_1",
+            "var_name": "number",
+            "var_type": "<class 'int'>"
+        }
+    ]
+}

@@ -2,6 +2,8 @@ def main():
     print("test")
 
 
-def test_func_1(mood):
+def test_func_1(mood, number):
+    number = 55
     mood = "nice"
-    print(mood)
+    number = -55
+    print(mood, number)
